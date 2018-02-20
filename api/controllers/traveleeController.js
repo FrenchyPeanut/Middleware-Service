@@ -14,7 +14,6 @@ exports.list_all_trips = function(req, res) {
 
 
 
-
 exports.create_a_trip = function(req, res) {
   var new_trip = new Trip(req.body);
   new_trip.save(function(err, trip) {
@@ -40,6 +39,10 @@ exports.update_a_trip = function(req, res) {
       res.send(err);
     res.json(trip);
   });
+};
+
+exportts.generate_a_trip = function(req,res){
+
 };
 
 
