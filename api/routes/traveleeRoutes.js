@@ -12,4 +12,8 @@ module.exports = function(app) {
     .get(travelee.read_a_trip)
     .put(travelee.update_a_trip)
     .delete(travelee.delete_a_trip);
+
+  app.route('trips/find')
+    .post(travelee.generate_a_trip);
+
 };
