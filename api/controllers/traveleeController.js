@@ -3,6 +3,7 @@
 
 var mongoose = require('mongoose'),
   Trip = mongoose.model('Trip');
+var request = require('request');
 
 exports.list_all_trips = function(req, res) {
   Trip.find({}, function(err, trip) {
@@ -34,21 +35,45 @@ exports.read_a_trip = function(req, res) {
 
 
 exports.update_a_trip = function(req, res) {
-  Trip.findOneAndUpdate({_id: req.params.tripId}, req.body, {new: true}, function(err, trip) {
+  Trip.findOneAndUpdate({
+    _id: req.params.tripId
+  }, req.body, {
+    new: true
+  }, function(err, trip) {
     if (err)
       res.send(err);
     res.json(trip);
   });
 };
 
-exportts.generate_a_trip = function(req,res){
+exports.generate_a_trip = function(req, res) {
   //Connecting to Google Places API
-  // API key for Google Places API : AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8
+  // AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8
 
   // URL example:
   // https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=-33.8670522,151.1957362&radius=500&type=restaurant&keyword=cruise&key=YOUR_API_KEY
-  
+  var back = "hello world";
 
+  /*request('https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=-33.8670522,151.1957362&radius=500&type=restaurant&keyword=cruise&key=AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8', {
+    json: true
+  }, (err, res, body) => {
+    if (err) {
+      return console.log(err + " test");
+    }
+    console.log(body.url);
+    console.log(body.explanation);
+    //back = body.url + body.explanation;
+  });*/
+
+  request.get('https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=-33.8670522,151.1957362&radius=500&type=restaurant&keyword=cruise&key=AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8')
+  .on('response', function(response) {
+    res.json(response);
+    console.log(response.statusCode) // 200
+    console.log(response.headers['content-type']) // 'image/png'
+  });
+
+  //res.json({message: 'test'});
+  //res.send('hello world');
 
 };
 
@@ -59,6 +84,8 @@ exports.delete_a_trip = function(req, res) {
   }, function(err, trip) {
     if (err)
       res.send(err);
-    res.json({ message: 'Trip successfully deleted' });
+    res.json({
+      message: 'Trip successfully deleted'
+    });
   });
 };

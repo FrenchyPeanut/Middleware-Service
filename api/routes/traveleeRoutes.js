@@ -13,7 +13,7 @@ module.exports = function(app) {
     .put(travelee.update_a_trip)
     .delete(travelee.delete_a_trip);
 
-  app.route('trips/find')
-    .post(travelee.generate_a_trip);
+  app.route('/find')
+    .get(travelee.generate_a_trip);
 
 };
