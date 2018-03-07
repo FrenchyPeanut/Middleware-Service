@@ -4,6 +4,8 @@
 var mongoose = require('mongoose'),
   Trip = mongoose.model('Trip');
 var request = require('request');
+var jsonSort = require('sort-json-array');
+var key = "AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8";
 
 exports.list_all_trips = function(req, res) {
   Trip.find({}, function(err, trip) {
@@ -77,6 +79,106 @@ exports.generate_a_trip = function(req, res) {
 
 };
 
+exports.get_nearby_locations = function(req, res) {
+  var location = req.query.location;
+  var keyword = req.query.keyword;
+  var radius = 500;
+  if (req.query.radius){
+    radius = req.query.radius;
+  }
+
+  var googleReq = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
+                  + location
+                  + "&radius=" + radius
+                  + "&keyword=" + keyword
+                  + "&key=" + key;
+
+  request.get(googleReq, function(error, response, body){
+    var jsonBody = JSON.parse(body);
+    var results = jsonBody.results;
+    var toReturn = {results: []};
+
+    for (var x in results){
+      if (results[x].rating > 4.0) {
+        toReturn.results.push(results[x]);
+      }
+    }
+
+    toReturn.results = jsonSort(toReturn.results, "rating", "des");
+
+    res.send(toReturn);
+  });
+
+
+}
+
+exports.create_a_trip = function(req, res) {
+
+  var userLocation = req.query.location;
+  var stopsRemaining = 2;
+  var resultsJSON = {results: []};
+
+  getLocation(userLocation, "historical+landmark");
+
+  function getLocation(curLocation, keyword){
+    // Gets the next stop on the trip and calls an update to trip itinerary
+
+    // construct query to Google
+    var radius = "500";
+    var googleReq = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
+                    + curLocation
+                    + "&keyword=" + keyword
+                    + "&radius=" + radius
+                    + "&key=" + key;
+
+    // send request to Google
+    request.get(googleReq, function(error, response, body){
+      // get body of response from Google
+      var jsonBody = JSON.parse(body);
+
+      // get list of locations from body
+      var results = jsonBody.results;
+
+      // choose a random location from the results
+      var nextStopIndex = getRandomInt(0, results.length);
+      var selectedStop = results[nextStopIndex];
+
+      // update the trip with new stop
+      updateTrip(selectedStop);
+    });
+  }
+
+  function updateTrip(result){
+    // Adds a stop to trip itinerary, and if trip is fully generated
+    // makes a call to send the response to the user
+
+    // add stop to the trip itinerary
+    resultsJSON.results.push(result);
+
+    // decrement number of stops left to make
+    stopsRemaining -= 1;
+
+    if (stopsRemaining == 0){
+      // return results to user
+      sendResponse(resultsJSON)
+    } else {
+      // get current location in trip
+      var stopLocation = result.geometry.location.lat + "," + result.geometry.location.lng;
+
+      // get new trip location based on current location
+      getLocation(stopLocation, "bar")
+    }
+  }
+
+  function sendResponse(results){
+    // return results to user
+    res.send(results);
+  }
+
+  function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1) ) + min;
+  }
+}
 
 exports.delete_a_trip = function(req, res) {
   Trip.remove({
