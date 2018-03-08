@@ -124,7 +124,7 @@ exports.create_a_trip = function(req, res) {
     // Gets the next stop on the trip and calls an update to trip itinerary
 
     // construct query to Google
-    var radius = "500";
+    var radius = 500;
     var googleReq = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
                     + curLocation
                     + "&keyword=" + keyword
@@ -160,7 +160,7 @@ exports.create_a_trip = function(req, res) {
 
     if (stopsRemaining == 0){
       // return results to user
-      sendResponse(resultsJSON)
+      sendResponse(resultsJSON);
     } else {
       // get current location in trip
       var stopLocation = result.geometry.location.lat + "," + result.geometry.location.lng;
@@ -179,12 +179,17 @@ exports.create_a_trip = function(req, res) {
 exports.nearby_suggestion = function(req, res){
   // Suggests a nearby location to visit based on entered keyword
 
-  // get user location and keyword
+  var resultsJSON = {results: []};
+
+  // get user location, keyword and optional radius
   var userLocation = req.query.location;
   var keyword = req.query.keyword;
+  var radius = 500;
+  if (req.query.radius){
+    radius = req.query.radius;
+  }
 
   // construct Google query
-  var radius = 500;
 
   var googleReq = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
                   + userLocation
@@ -203,9 +208,10 @@ exports.nearby_suggestion = function(req, res){
     // choose a random location from the results
     var nextStopIndex = getRandomInt(0, results.length);
     var selectedStop = results[nextStopIndex];
+    resultsJSON.results.push(selectedStop);
 
     // return result to user
-    res.send(selectedStop);
+    res.send(resultsJSON);
   });
 
 
