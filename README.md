@@ -5,15 +5,32 @@
 
 // Working
 
-Nearby places : location, [keyword], [radius]
+Nearby places : location, keyword, [radius]
 
-  - GET /nearby?location= [&keyword=] [&radius=]
+  - GET /nearby?location= &keyword= [&radius=]
+
+Returns list of nearby locations based on the keyword. Can optionally specify
+radius.
 
 Returns an JSON object in the format:
 { results: [googleResponses] }
 and is sorted by rating
 
 --------------------
+
+Nearby suggestion : location, keyword, [radius]
+
+  - GET /suggestion?location= &keyword= [&radius=]
+
+Selects a random nearby location based on keyword submitted. Can optionally
+specify radius
+
+Returns an JSON object in the format:
+{ results: [googleResponses] }
+Contains one result
+
+
+---------------------
 
 // In Progress
 
@@ -25,7 +42,8 @@ Returns an JSON object in the format:
 { results: [googleResponses] }
 
 Currently returns a historical landmark, followed by a bar. Both of these
-locations are chosen at random. Each locations is within 500m of previous location.
+locations are chosen at random. Each locations is within 500m of previous
+location.
 
 ------------------------------
 
@@ -38,7 +56,7 @@ Nearby places : userID, location
 
 Nearby places (trip) : userID, location, number of stops
 
-  - GET /create_trip/:userID?location= &stops= 
+  - GET /create_trip/:userID?location= &stops=
 
 
 

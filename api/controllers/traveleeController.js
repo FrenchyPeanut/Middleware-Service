@@ -124,7 +124,7 @@ exports.create_a_trip = function(req, res) {
     // Gets the next stop on the trip and calls an update to trip itinerary
 
     // construct query to Google
-    var radius = "500";
+    var radius = 500;
     var googleReq = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
                     + curLocation
                     + "&keyword=" + keyword
@@ -160,7 +160,7 @@ exports.create_a_trip = function(req, res) {
 
     if (stopsRemaining == 0){
       // return results to user
-      sendResponse(resultsJSON)
+      sendResponse(resultsJSON);
     } else {
       // get current location in trip
       var stopLocation = result.geometry.location.lat + "," + result.geometry.location.lng;
@@ -174,10 +174,47 @@ exports.create_a_trip = function(req, res) {
     // return results to user
     res.send(results);
   }
+}
 
-  function getRandomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1) ) + min;
+exports.nearby_suggestion = function(req, res){
+  // Suggests a nearby location to visit based on entered keyword
+
+  var resultsJSON = {results: []};
+
+  // get user location, keyword and optional radius
+  var userLocation = req.query.location;
+  var keyword = req.query.keyword;
+  var radius = 500;
+  if (req.query.radius){
+    radius = req.query.radius;
   }
+
+  // construct Google query
+
+  var googleReq = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
+                  + userLocation
+                  + "&keyword=" + keyword
+                  + "&radius=" + radius
+                  + "&key=" + key;
+
+  // send request to Google
+  request.get(googleReq, function(error, response, body){
+    // get body of response from Google
+    var jsonBody = JSON.parse(body);
+
+    // get list of locations from body
+    var results = jsonBody.results;
+
+    // choose a random location from the results
+    var nextStopIndex = getRandomInt(0, results.length);
+    var selectedStop = results[nextStopIndex];
+    resultsJSON.results.push(selectedStop);
+
+    // return result to user
+    res.send(resultsJSON);
+  });
+
+
 }
 
 exports.delete_a_trip = function(req, res) {
@@ -191,3 +228,9 @@ exports.delete_a_trip = function(req, res) {
     });
   });
 };
+
+
+// Utility functions
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1) ) + min;
+}
