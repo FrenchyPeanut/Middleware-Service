@@ -15,6 +15,12 @@ and is sorted by rating
 
 --------------------
 
+Nearby suggestion : location, keyword
+
+  - GET /suggestion?location= &keyword=
+
+---------------------
+
 // In Progress
 
 Create a trip: location
@@ -38,7 +44,7 @@ Nearby places : userID, location
 
 Nearby places (trip) : userID, location, number of stops
 
-  - GET /create_trip/:userID?location= &stops= 
+  - GET /create_trip/:userID?location= &stops=
 
 
 

@@ -174,10 +174,41 @@ exports.create_a_trip = function(req, res) {
     // return results to user
     res.send(results);
   }
+}
 
-  function getRandomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1) ) + min;
-  }
+exports.nearby_suggestion = function(req, res){
+  // Suggests a nearby location to visit based on entered keyword
+
+  // get user location and keyword
+  var userLocation = req.query.location;
+  var keyword = req.query.keyword;
+
+  // construct Google query
+  var radius = 500;
+
+  var googleReq = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
+                  + userLocation
+                  + "&keyword=" + keyword
+                  + "&radius=" + radius
+                  + "&key=" + key;
+
+  // send request to Google
+  request.get(googleReq, function(error, response, body){
+    // get body of response from Google
+    var jsonBody = JSON.parse(body);
+
+    // get list of locations from body
+    var results = jsonBody.results;
+
+    // choose a random location from the results
+    var nextStopIndex = getRandomInt(0, results.length);
+    var selectedStop = results[nextStopIndex];
+
+    // return result to user
+    res.send(selectedStop);
+  });
+
+
 }
 
 exports.delete_a_trip = function(req, res) {
@@ -191,3 +222,9 @@ exports.delete_a_trip = function(req, res) {
     });
   });
 };
+
+
+// Utility functions
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1) ) + min;
+}

@@ -19,6 +19,9 @@ module.exports = function(app) {
   app.route('/nearby')
     .get(travelee.get_nearby_locations);
 
+  app.route('/suggestion')
+    .get(travelee.nearby_suggestion);
+
   app.route('/create_trip')
     .get(travelee.create_a_trip);
 
