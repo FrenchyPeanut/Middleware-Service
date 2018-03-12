@@ -38,11 +38,13 @@ Create a trip: location, keywords, number of stops
 
   - GET /create_trip?location= &keywords= &stops=
 
-Returns an JSON object in the format:
-{ results: [googleResponses] }
+keywords must be separated by a ","
 
 Returns a list of locations with the specified number of stops that can contain
 the location types mentioned in "keywords"
+
+Returns an JSON object in the format:
+{ results: [googleResponses] }
 
 ------------------------------
 
