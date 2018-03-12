@@ -120,7 +120,6 @@ exports.create_a_trip = function(req, res) {
   var userLocation = req.query.location;
   var keywords = req.query.keywords;
   var numStops = Number(req.query.stops);
-  console.log(userLocation + ", " + keywords + ", " + numStops);
   var resultsJSON = {results: []};
 
   // variables for trip generation
@@ -129,7 +128,6 @@ exports.create_a_trip = function(req, res) {
 
   // list of location types to visit
   var toVisitList = buildToVisitList(keywords);
-  console.log(toVisitList);
   var toVisitListIndex = 0;
 
   getLocation(userLocation, toVisitList[toVisitListIndex]);
@@ -155,7 +153,6 @@ exports.create_a_trip = function(req, res) {
 
       // choose a random location from the results
       var selectedStop = selectStop(results);
-      console.log(selectedStop);
 
       // update the trip with new stop
       updateTrip(selectedStop);
