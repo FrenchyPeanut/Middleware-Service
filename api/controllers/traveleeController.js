@@ -113,12 +113,26 @@ exports.get_nearby_locations = function(req, res) {
 }
 
 exports.create_a_trip = function(req, res) {
+  // builds an itinerary for the client based on their current location,
+  // supplied keywords and number of stops desired.
 
+  // get user location, keywords and number of stops from query
   var userLocation = req.query.location;
-  var stopsRemaining = 2;
+  var keywords = req.query.keywords;
+  var numStops = Number(req.query.stops);
+  console.log(userLocation + ", " + keywords + ", " + numStops);
   var resultsJSON = {results: []};
 
-  getLocation(userLocation, "historical+landmark");
+  // variables for trip generation
+  // already visited locations
+  var visitedIDs = [];
+
+  // list of location types to visit
+  var toVisitList = buildToVisitList(keywords);
+  console.log(toVisitList);
+  var toVisitListIndex = 0;
+
+  getLocation(userLocation, toVisitList[toVisitListIndex]);
 
   function getLocation(curLocation, keyword){
     // Gets the next stop on the trip and calls an update to trip itinerary
@@ -140,8 +154,8 @@ exports.create_a_trip = function(req, res) {
       var results = jsonBody.results;
 
       // choose a random location from the results
-      var nextStopIndex = getRandomInt(0, results.length);
-      var selectedStop = results[nextStopIndex];
+      var selectedStop = selectStop(results);
+      console.log(selectedStop);
 
       // update the trip with new stop
       updateTrip(selectedStop);
@@ -156,9 +170,9 @@ exports.create_a_trip = function(req, res) {
     resultsJSON.results.push(result);
 
     // decrement number of stops left to make
-    stopsRemaining -= 1;
+    toVisitListIndex += 1;
 
-    if (stopsRemaining == 0){
+    if (toVisitListIndex == numStops){
       // return results to user
       sendResponse(resultsJSON);
     } else {
@@ -166,13 +180,42 @@ exports.create_a_trip = function(req, res) {
       var stopLocation = result.geometry.location.lat + "," + result.geometry.location.lng;
 
       // get new trip location based on current location
-      getLocation(stopLocation, "bar")
+      getLocation(stopLocation, toVisitList[toVisitListIndex]);
     }
   }
 
   function sendResponse(results){
     // return results to user
     res.send(results);
+  }
+
+  function buildToVisitList(keywords){
+    // Builds a list of locations to visit the length of the number of stops
+    var toVisitList = [];
+    var keywordList = keywords.split(',');
+
+    while (toVisitList.length < numStops){
+      var keywordIndex = getRandomInt(0, keywordList.length - 1);
+      toVisitList.push(keywordList[keywordIndex]);
+    }
+
+    return toVisitList;
+  }
+
+  function selectStop(results){
+    // Selects a random stop with a rating > 4 to visit from list of possible
+    // locations. Makes sure that location hasn't already been visited.
+
+    var selectedStop;
+    do {
+      var nextStopIndex = getRandomInt(0, results.length - 1);
+      selectedStop = results[nextStopIndex];
+    }
+    while (selectedStop.rating < 4 && !isInArray(selectedStop.place_id, visitedIDs));
+
+    visitedIDs.push(selectedStop.place_id);
+
+    return selectedStop;
   }
 }
 
@@ -233,4 +276,8 @@ exports.delete_a_trip = function(req, res) {
 // Utility functions
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1) ) + min;
+}
+
+function isInArray(value, array) {
+  return array.indexOf(value) > -1;
 }
