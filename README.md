@@ -34,16 +34,17 @@ Contains one result
 
 // In Progress
 
-Create a trip: location
+Create a trip: location, keywords, number of stops
 
-  - GET /create_trip?location=
+  - GET /create_trip?location= &keywords= &stops=
+
+keywords must be separated by a ","
+
+Returns a list of locations with the specified number of stops that can contain
+the location types mentioned in "keywords"
 
 Returns an JSON object in the format:
 { results: [googleResponses] }
-
-Currently returns a historical landmark, followed by a bar. Both of these
-locations are chosen at random. Each locations is within 500m of previous
-location.
 
 ------------------------------
 
