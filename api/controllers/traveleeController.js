@@ -110,7 +110,7 @@ exports.get_nearby_locations = function(req, res) {
   });
 
 
-}
+};
 
 exports.create_a_trip = function(req, res) {
   // builds an itinerary for the client based on their current location,
@@ -124,7 +124,7 @@ exports.create_a_trip = function(req, res) {
 
   // variables for trip generation
   // already visited locations
-  var visitedIDs = [];
+  var visitedPlaces = [];
 
   // list of location types to visit
   var toVisitList = buildToVisitList(keywords);
@@ -136,7 +136,7 @@ exports.create_a_trip = function(req, res) {
     // Gets the next stop on the trip and calls an update to trip itinerary
 
     // construct query to Google
-    var radius = 500;
+    var radius = 600;
     var googleReq = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
                     + curLocation
                     + "&keyword=" + keyword
@@ -156,6 +156,19 @@ exports.create_a_trip = function(req, res) {
 
       // update the trip with new stop
       updateTrip(selectedStop);
+
+      function selectStop(results){
+        // Selects a random stop with a rating > 4 to visit from list of possible
+        // locations. Makes sure that location hasn't already been visited.
+
+        var selectedStop;
+        do {
+          var nextStopIndex = getRandomInt(0, results.length - 1);
+          selectedStop = results[nextStopIndex];
+        } while (isInArray(selectedStop.name.trim(), visitedPlaces));
+
+        return selectedStop;
+      }
     });
   }
 
@@ -163,8 +176,9 @@ exports.create_a_trip = function(req, res) {
     // Adds a stop to trip itinerary, and if trip is fully generated
     // makes a call to send the response to the user
 
-    // add stop to the trip itinerary
+    // add stop to the trip itinerary and
     resultsJSON.results.push(result);
+    visitedPlaces.push(result.name.trim());
 
     // decrement number of stops left to make
     toVisitListIndex += 1;
@@ -181,9 +195,11 @@ exports.create_a_trip = function(req, res) {
     }
   }
 
-  function sendResponse(results){
+  function sendResponse(resultsJSON){
+    // optimize trip route
+    resultsJSON.results = optimizeRoute(resultsJSON.results);
     // return results to user
-    res.send(results);
+    res.send(resultsJSON);
   }
 
   function buildToVisitList(keywords){
@@ -199,22 +215,50 @@ exports.create_a_trip = function(req, res) {
     return toVisitList;
   }
 
-  function selectStop(results){
-    // Selects a random stop with a rating > 4 to visit from list of possible
-    // locations. Makes sure that location hasn't already been visited.
+  function optimizeRoute(results){
+    // builds a travelling salesman route out of list of results.
+    // adds distance from previous location and walking time.
+    var optimizedRoute = [];
+    var userLatLng = userLocation.split(",");
+    var curLat = Number(userLatLng[0]);
+    var curLng = Number(userLatLng[1]);
+    var minLat;
+    var minLng;
+    var minDistance;
+    var minDistIndex;
 
-    var selectedStop;
-    do {
-      var nextStopIndex = getRandomInt(0, results.length - 1);
-      selectedStop = results[nextStopIndex];
+    while (results.length > 0){
+      minDistance = 10000;
+
+      for (var i = 0; i < results.length; i++){
+        var result = results[i];
+        var resultLat = result.geometry.location.lat;
+        var resultLng = result.geometry.location.lng;
+        var distanceFromLast = getDistanceSphere(curLat, curLng, resultLat,resultLng);
+
+        if (distanceFromLast < minDistance){
+          minDistance = distanceFromLast;
+          minDistIndex = i;
+          minLat = resultLat;
+          minLng = resultLng;
+        }
+      }
+      var toAdd = results.splice(minDistIndex, 1)[0];
+      toAdd["distanceFromLast"] = Math.round(distanceFromLast);
+      var walkingTime = distanceFromLast / 83; // 5km/h walking speed per minute
+      toAdd["walkingTimeFromLast"] = Math.round(walkingTime);
+
+      curLat = minLat;
+      curLng = minLng;
+
+      optimizedRoute.push(toAdd);
     }
-    while (selectedStop.rating < 4 && !isInArray(selectedStop.place_id, visitedIDs));
 
-    visitedIDs.push(selectedStop.place_id);
+    return optimizedRoute;
+    }
 
-    return selectedStop;
-  }
-}
+
+};
 
 exports.nearby_suggestion = function(req, res){
   // Suggests a nearby location to visit based on entered keyword
@@ -255,7 +299,7 @@ exports.nearby_suggestion = function(req, res){
   });
 
 
-}
+};
 
 exports.delete_a_trip = function(req, res) {
   Trip.remove({
@@ -275,6 +319,24 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1) ) + min;
 }
 
+function getDistance(lat1, lng1, lat2, lng2){
+  return Math.sqrt(((lat2-lat1)*(lat2-lat1)) + ((lng2-lng1)*(lng2-lng1)));
+}
+
+function getDistanceSphere(lat1, lon1, lat2, lon2) {
+  // From https://stackoverflow.com/questions/27928/calculate-distance-between-two-latitude-longitude-points-haversine-formula
+  var p = 0.017453292519943295;    // Math.PI / 180
+  var c = Math.cos;
+  var a = 0.5 - c((lat2 - lat1) * p)/2 +
+          c(lat1 * p) * c(lat2 * p) *
+          (1 - c((lon2 - lon1) * p))/2;
+
+  return 12742 * Math.asin(Math.sqrt(a)) * 1000; // 2 * R; R = 6371 km
+}
+
 function isInArray(value, array) {
-  return array.indexOf(value) > -1;
+  if (array.indexOf(value) > -1){
+    return true;
+  }
+  return false;
 }
