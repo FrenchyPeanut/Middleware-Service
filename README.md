@@ -47,7 +47,19 @@ Returns an JSON object in the format:
 { results: [googleResponses] }
 
 ------------------------------
+Create a trip with hours: location, keywords, number of hours
 
+  - GET /create_trip_with_time?location= &keywords= &hours=
+
+keywords must be separated by a ","
+
+Returns a list of locations that fills the number of hours in "hours" that can
+contain the location types mentioned in "keywords"
+
+Returns an JSON object in the format:
+{ results: [googleResponses] }
+
+------------------------------
 
 // To Do
 
