@@ -25,4 +25,6 @@ module.exports = function(app) {
   app.route('/create_trip')
     .get(travelee.create_a_trip);
 
-};
+  app.route('/create_trip_with_time')
+    .get(travelee.create_trip_with_time);
+}
