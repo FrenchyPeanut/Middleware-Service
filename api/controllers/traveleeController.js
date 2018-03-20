@@ -501,16 +501,21 @@ exports.nearby_suggestion = function(req, res){
   var resultsJSON = {results: []};
 
   // get user location, keyword and optional radius
-  if (!req.query.location || !req.query.keyword){
-    res.send("Error: please enter location and keyword");
+  if (!req.query.location || !req.query.keywords){
+    resultsJSON["error"] = "Please enter location and keywords";
+    res.send(resultsJSON);
     return;
   }
   var userLocation = req.query.location;
-  var keyword = req.query.keyword;
+  var keywords = req.query.keywords;
   var radius = 500;
   if (req.query.radius){
     radius = req.query.radius;
   }
+
+  var keywordList = keywords.split(",");
+  var keywordIndex = getRandomInt(0, keywordList.length-1);
+  var keyword = keywordList[keywordIndex];
 
   // construct Google query
 
@@ -536,6 +541,13 @@ exports.nearby_suggestion = function(req, res){
     var userLatLng = userLocation.split(",");
     var userLat = userLatLng[0];
     var userLng = userLatLng[1];
+
+    // makes sure result exists to stop server crashing
+    if (!selectedStop){
+      resultsJSON["error"] = "No result found";
+      res.send(resultsJSON);
+      return;
+    }
     var destLat = selectedStop.geometry.location.lat;
     var destLng = selectedStop.geometry.location.lng;
 

@@ -1,5 +1,7 @@
 # Middleware Service - Places
 
+// API IP
+http://108.61.196.188
 
 // API Calls
 
