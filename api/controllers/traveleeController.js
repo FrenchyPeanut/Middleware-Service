@@ -80,6 +80,11 @@ exports.generate_a_trip = function(req, res) {
 };
 
 exports.get_nearby_locations = function(req, res) {
+
+  if (!req.query.location || !req.query.keyword){
+    res.send("Error: please enter location and keyword");
+    return;
+  }
   var location = req.query.location;
   var keyword = req.query.keyword;
   var radius = 500;
@@ -117,9 +122,18 @@ exports.create_a_trip = function(req, res) {
   // supplied keywords and number of stops desired.
 
   // get user location, keywords and number of stops from query
+  if (!req.query.location || !req.query.keywords || !req.query.stops){
+    res.send("Error: please enter location, keywords and number of stops");
+    return;
+  }
+
   var userLocation = req.query.location;
   var keywords = req.query.keywords;
   var numStops = Number(req.query.stops);
+  if (!numStops){
+    res.send("Error: please enter valid number of stops");
+    return;
+  }
   var resultsJSON = {results: []};
 
   // variables for trip generation
@@ -265,7 +279,7 @@ exports.create_a_trip = function(req, res) {
 
       // add distanceFromLast and walkingTimeFromLast properties to selected location
       toAdd["distanceFromLast"] = minDistance;
-      var walkingTime = minDistance / 83; // 5km/h walking speed per minute
+      var walkingTime = minDistance / 83 * 60; // 5km/h walking speed per minute
       toAdd["walkingTimeFromLast"] = Math.round(walkingTime);
 
       // set new current location to selected location
@@ -285,12 +299,20 @@ exports.create_trip_with_time = function(req, res){
   // time allowed for trip. Time allowed includes walking time between locations.
 
   // get user location, keywords and number of hours from query
+  if (!req.query.location || !req.query.keywords || !req.query.hours){
+    res.send("Error: please enter location, keywords and number of hours");
+    return;
+  }
   var userLocation = req.query.location.split(",");
   var userLat = userLocation[0];
   var userLng = userLocation[1];
   var keywords = req.query.keywords;
   var keywordList = keywords.split(",");
   var totalTripHours = Number(req.query.hours);
+  if (!totalTripHours){
+    res.send("Error: please enter valid number of hours");
+    return;
+  }
   var resultsJSON = {results: []};
 
   // convert hours to minutes
@@ -419,7 +441,7 @@ exports.create_trip_with_time = function(req, res){
     var resultLat = stop.geometry.location.lat;
     var resultLng = stop.geometry.location.lng;
     var distanceFromLast = getDistanceSphere(curLat, curLng, resultLat, resultLng);
-    var walkingTimeFromLast = Math.round(distanceFromLast / 83);
+    var walkingTimeFromLast = Math.round(distanceFromLast / 83 * 60);
 
     stop["distanceFromLast"] = distanceFromLast;
     stop["walkingTimeFromLast"] = walkingTimeFromLast;
@@ -479,6 +501,10 @@ exports.nearby_suggestion = function(req, res){
   var resultsJSON = {results: []};
 
   // get user location, keyword and optional radius
+  if (!req.query.location || !req.query.keyword){
+    res.send("Error: please enter location and keyword");
+    return;
+  }
   var userLocation = req.query.location;
   var keyword = req.query.keyword;
   var radius = 500;
@@ -505,6 +531,21 @@ exports.nearby_suggestion = function(req, res){
     // choose a random location from the results
     var nextStopIndex = getRandomInt(0, results.length);
     var selectedStop = results[nextStopIndex];
+
+    // calculate distance and walking time
+    var userLatLng = userLocation.split(",");
+    var userLat = userLatLng[0];
+    var userLng = userLatLng[1];
+    var destLat = selectedStop.geometry.location.lat;
+    var destLng = selectedStop.geometry.location.lng;
+
+    var distanceFromLast = getDistanceSphere(userLat, userLng, destLat, destLng);
+    var walkingTimeFromLast = Math.round(distanceFromLast / 83 * 60); // 5km/h walking speed in seconds
+
+    selectedStop["distanceFromLast"] = distanceFromLast;
+    selectedStop["walkingTimeFromLast"] = walkingTimeFromLast;
+
+    // add to resultsJSON
     resultsJSON.results.push(selectedStop);
 
     // return result to user
@@ -537,6 +578,7 @@ function getDistance(lat1, lng1, lat2, lng2){
 }
 
 function getDistanceSphere(lat1, lon1, lat2, lon2) {
+  // gets distance on the surface of the globe, returns rounded result  in metres
   // From https://stackoverflow.com/questions/27928/calculate-distance-between-two-latitude-longitude-points-haversine-formula
   var p = 0.017453292519943295;    // Math.PI / 180
   var c = Math.cos;
