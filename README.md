@@ -73,10 +73,22 @@ Nearby places (trip) : userID, location, number of stops
 
   - GET /create_trip/:userID?location= &stops=
 
+--------------------------------
 
+// Useful Query Keywords:
 
+restaurant
+cafe
+bar
+live+music
+performing+arts+theatre
+movie+theatre
+museum
+art+gallery
+historical+landmark
+park
 
-
+------------------------------
 Example Google Places response:
 
     {
