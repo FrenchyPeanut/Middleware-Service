@@ -323,7 +323,7 @@ exports.create_trip_with_time = function(req, res){
     "restaurant": 60,
     "cafe": 30,
     "bar": 60,
-    "historical+landmark": 20,
+    "historical landmark": 20,
     "venue": 60,
     "park": 30
   };
@@ -441,7 +441,7 @@ exports.create_trip_with_time = function(req, res){
     var resultLat = stop.geometry.location.lat;
     var resultLng = stop.geometry.location.lng;
     var distanceFromLast = getDistanceSphere(curLat, curLng, resultLat, resultLng);
-    var walkingTimeFromLast = Math.round(distanceFromLast / 83 * 60);
+    var walkingTimeFromLast = Math.round(distanceFromLast / 83);
 
     stop["distanceFromLast"] = distanceFromLast;
     stop["walkingTimeFromLast"] = walkingTimeFromLast;
@@ -552,7 +552,7 @@ exports.nearby_suggestion = function(req, res){
     var destLng = selectedStop.geometry.location.lng;
 
     var distanceFromLast = getDistanceSphere(userLat, userLng, destLat, destLng);
-    var walkingTimeFromLast = Math.round(distanceFromLast / 83 * 60); // 5km/h walking speed in seconds
+    var walkingTimeFromLast = Math.round(distanceFromLast / 83); // 5km/h walking speed in minutes
 
     selectedStop["distanceFromLast"] = distanceFromLast;
     selectedStop["walkingTimeFromLast"] = walkingTimeFromLast;
