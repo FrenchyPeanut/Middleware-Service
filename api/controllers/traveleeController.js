@@ -360,6 +360,7 @@ exports.create_trip_with_time = function(req, res){
 
     var isSelected = false;
     var type;
+    var count = 0;
 
     while (!isSelected){
       // select an item from the keywordList
@@ -375,8 +376,10 @@ exports.create_trip_with_time = function(req, res){
           keywordSelected = true;
         }
       }
+      // prevent infinite loops
+      count += 1;
       // check if that item exists in lookup table
-      if (activityTimes.hasOwnProperty(keyword) && keywordList.length > 1){
+      if (activityTimes.hasOwnProperty(keyword) && keywordList.length > 1 && count < 10){
         // check if it is suitable time for location
         if (isInArray(hour, activityTimes[keyword])){
           // if suitable, select keyword and set isSelected to true. Also sets to true if only one keyword to prevent infinite loops
