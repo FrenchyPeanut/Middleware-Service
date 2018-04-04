@@ -376,10 +376,10 @@ exports.create_trip_with_time = function(req, res){
         }
       }
       // check if that item exists in lookup table
-      if (activityTimes.hasOwnProperty(keyword)){
+      if (activityTimes.hasOwnProperty(keyword) && keywordList.length > 1){
         // check if it is suitable time for location
         if (isInArray(hour, activityTimes[keyword])){
-          // if suitable, select keyword and set isSelected to true
+          // if suitable, select keyword and set isSelected to true. Also sets to true if only one keyword to prevent infinite loops
           type = keyword;
           isSelected = true;
         }
@@ -420,9 +420,15 @@ exports.create_trip_with_time = function(req, res){
         // Makes sure that location hasn't already been visited.
 
         var selectedStop;
+        var count = 0;
         do {
           var nextStopIndex = getRandomInt(0, results.length - 1);
           selectedStop = results[nextStopIndex];
+          count += 1;
+          if (count > 10){
+            // getting hung up, return what results are available
+            sendResponse(resultsJSON);
+          }
         } while (isInArray(selectedStop.name.trim(), visitedPlaceNames));
 
         return selectedStop;
