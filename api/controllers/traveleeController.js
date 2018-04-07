@@ -5,7 +5,10 @@ var mongoose = require('mongoose'),
   Trip = mongoose.model('Trip');
 var request = require('request');
 var jsonSort = require('sort-json-array');
-var key = "AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8";
+var key = "AIzaSyDOCuie_UYb_wm7jlb1N1hrx4R2-PkYA9A";
+
+// key = AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8
+// spare key = AIzaSyDOCuie_UYb_wm7jlb1N1hrx4R2-PkYA9A
 
 exports.list_all_trips = function(req, res) {
   Trip.find({}, function(err, trip) {
