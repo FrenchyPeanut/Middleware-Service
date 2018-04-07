@@ -5,7 +5,10 @@ var mongoose = require('mongoose'),
   Trip = mongoose.model('Trip');
 var request = require('request');
 var jsonSort = require('sort-json-array');
-var key = "AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8";
+var key = "AIzaSyDOCuie_UYb_wm7jlb1N1hrx4R2-PkYA9A";
+
+// key = AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8
+// spare key = AIzaSyDOCuie_UYb_wm7jlb1N1hrx4R2-PkYA9A
 
 exports.list_all_trips = function(req, res) {
   Trip.find({}, function(err, trip) {
@@ -417,15 +420,16 @@ exports.create_trip_with_time = function(req, res){
       var results = jsonBody.results;
 
       if (results.length > 0){
-        nextLocRetries = 0;
         // choose a random location from the results
         var selectedStop = selectStop(results);
 
         // update the trip with new stop
         updateTrip(selectedStop, type);
-      } else if ( results.length == 0 && nextLocRetries < 5){
+      } else if ( results.length == 0 && nextLocRetries < 3){
         var type = selectNextLocationType(curHours);
         getNextLocation(curLat, curLng, type);
+      } else {
+        updateTrip(null, null);
       }
 
       function selectStop(results){
@@ -484,11 +488,9 @@ exports.create_trip_with_time = function(req, res){
       }
 
       curTripMins += timeForLocation;
-    } else {
-      totalRetries += 1
     }
 
-    if (curTripMins >= totalTripMins || totalRetries > 5){
+    if (curTripMins >= totalTripMins || totalRetries > 3){
       // return results to user
       sendResponse(resultsJSON);
     } else if (result != null){
@@ -499,6 +501,7 @@ exports.create_trip_with_time = function(req, res){
       var type = selectNextLocationType(curHours);
       getNextLocation(curLat, curLng, type);
     } else {
+      totalRetries += 1
       var type = selectNextLocationType(curHours);
       getNextLocation(curLat, curLng, type);
     }
