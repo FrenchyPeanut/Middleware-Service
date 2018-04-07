@@ -351,6 +351,10 @@ exports.create_trip_with_time = function(req, res){
   var curLat = userLat;
   var curLng = userLng;
 
+  // retry variables to stop API from getting hung up
+  var nextLocRetries = 0;
+  var totalRetries = 0;
+
   var type = selectNextLocationType(curHours);
 
   getNextLocation(curLat, curLng, type);
@@ -397,7 +401,7 @@ exports.create_trip_with_time = function(req, res){
 
   function getNextLocation(lat, lng, type){
     // construct query to Google
-    var radius = 400;
+    var radius = 500;
     var googleReq = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
                     + lat + "," + lng
                     + "&keyword=" + type
@@ -412,11 +416,17 @@ exports.create_trip_with_time = function(req, res){
       // get list of locations from body
       var results = jsonBody.results;
 
-      // choose a random location from the results
-      var selectedStop = selectStop(results);
+      if (results.length > 0){
+        nextLocRetries = 0;
+        // choose a random location from the results
+        var selectedStop = selectStop(results);
 
-      // update the trip with new stop
-      updateTrip(selectedStop, type);
+        // update the trip with new stop
+        updateTrip(selectedStop, type);
+      } else if ( results.length == 0 && nextLocRetries < 5){
+        var type = selectNextLocationType(curHours);
+        getNextLocation(curLat, curLng, type);
+      }
 
       function selectStop(results){
         // Selects a random stop to visit from list of possible locations.
@@ -430,7 +440,8 @@ exports.create_trip_with_time = function(req, res){
           count += 1;
           if (count > 10){
             // getting hung up, return what results are available
-            sendResponse(resultsJSON);
+            selectedStop = null;
+            break;
           }
         } while (isInArray(selectedStop.name.trim(), visitedPlaceNames));
 
@@ -442,49 +453,54 @@ exports.create_trip_with_time = function(req, res){
   function updateTrip(result, type){
     // Adds a stop to trip itinerary, and if trip is fully generated
     // makes a call to send the response to the user
+    if (result != null){
+      var stop = result;
 
-    var stop = result;
+      // add distanceFromLast and walkingTimeFromLast properties to result, update
+      // curLat and curLng with new location data
+      var resultLat = stop.geometry.location.lat;
+      var resultLng = stop.geometry.location.lng;
+      var distanceFromLast = getDistanceSphere(curLat, curLng, resultLat, resultLng);
+      var walkingTimeFromLast = Math.round(distanceFromLast / 83);
 
-    // add distanceFromLast and walkingTimeFromLast properties to result, update
-    // curLat and curLng with new location data
-    var resultLat = stop.geometry.location.lat;
-    var resultLng = stop.geometry.location.lng;
-    var distanceFromLast = getDistanceSphere(curLat, curLng, resultLat, resultLng);
-    var walkingTimeFromLast = Math.round(distanceFromLast / 83);
+      stop["distanceFromLast"] = distanceFromLast;
+      stop["walkingTimeFromLast"] = walkingTimeFromLast;
 
-    stop["distanceFromLast"] = distanceFromLast;
-    stop["walkingTimeFromLast"] = walkingTimeFromLast;
+      curLat = resultLat;
+      curLng = resultLng;
 
-    curLat = resultLat;
-    curLng = resultLng;
+      // add stop to the trip itinerary and
+      resultsJSON.results.push(stop);
+      visitedPlaceTypes.push(type);
+      visitedPlaceNames.push(result.name.trim());
 
-    // add stop to the trip itinerary and
-    resultsJSON.results.push(stop);
-    visitedPlaceTypes.push(type);
-    visitedPlaceNames.push(result.name.trim());
+      // update trip time estimate with walking time and location time
+      curTripMins += walkingTimeFromLast;
+      var timeForLocation;
+      if (activityLengths.hasOwnProperty(type)){
+        timeForLocation = activityLengths[type];
+      } else {
+        timeForLocation = 45;
+      }
 
-    // update trip time estimate with walking time and location time
-    curTripMins += walkingTimeFromLast;
-    var timeForLocation;
-    if (activityLengths.hasOwnProperty(type)){
-      timeForLocation = activityLengths[type];
+      curTripMins += timeForLocation;
     } else {
-      timeForLocation = 30;
+      totalRetries += 1
     }
 
-    curTripMins += timeForLocation;
-
-    if (curTripMins >= totalTripMins){
+    if (curTripMins >= totalTripMins || totalRetries > 5){
       // return results to user
       sendResponse(resultsJSON);
-    } else {
+    } else if (result != null){
       // update clock for new location
       updateTime(timeForLocation, walkingTimeFromLast);
 
       // get new trip location based on current location and type
       var type = selectNextLocationType(curHours);
       getNextLocation(curLat, curLng, type);
-
+    } else {
+      var type = selectNextLocationType(curHours);
+      getNextLocation(curLat, curLng, type);
     }
   }
 
