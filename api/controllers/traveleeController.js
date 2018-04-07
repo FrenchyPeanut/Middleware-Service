@@ -417,15 +417,16 @@ exports.create_trip_with_time = function(req, res){
       var results = jsonBody.results;
 
       if (results.length > 0){
-        nextLocRetries = 0;
         // choose a random location from the results
         var selectedStop = selectStop(results);
 
         // update the trip with new stop
         updateTrip(selectedStop, type);
-      } else if ( results.length == 0 && nextLocRetries < 5){
+      } else if ( results.length == 0 && nextLocRetries < 3){
         var type = selectNextLocationType(curHours);
         getNextLocation(curLat, curLng, type);
+      } else {
+        updateTrip(null, null);
       }
 
       function selectStop(results){
@@ -484,11 +485,9 @@ exports.create_trip_with_time = function(req, res){
       }
 
       curTripMins += timeForLocation;
-    } else {
-      totalRetries += 1
     }
 
-    if (curTripMins >= totalTripMins || totalRetries > 5){
+    if (curTripMins >= totalTripMins || totalRetries > 3){
       // return results to user
       sendResponse(resultsJSON);
     } else if (result != null){
@@ -499,6 +498,7 @@ exports.create_trip_with_time = function(req, res){
       var type = selectNextLocationType(curHours);
       getNextLocation(curLat, curLng, type);
     } else {
+      totalRetries += 1
       var type = selectNextLocationType(curHours);
       getNextLocation(curLat, curLng, type);
     }
