@@ -5,10 +5,11 @@ var mongoose = require('mongoose'),
   Trip = mongoose.model('Trip');
 var request = require('request');
 var jsonSort = require('sort-json-array');
-var key = "AIzaSyDOCuie_UYb_wm7jlb1N1hrx4R2-PkYA9A";
+var key = "AIzaSyCBK9DcA1myZY9kLi24J65dvzu2zCFc-Ik";
 
 // key = AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8
 // spare key = AIzaSyDOCuie_UYb_wm7jlb1N1hrx4R2-PkYA9A
+// spare spare key = AIzaSyCBK9DcA1myZY9kLi24J65dvzu2zCFc-Ik
 
 exports.list_all_trips = function(req, res) {
   Trip.find({}, function(err, trip) {
@@ -358,6 +359,9 @@ exports.create_trip_with_time = function(req, res){
   var nextLocRetries = 0;
   var totalRetries = 0;
 
+  // max queries variable to avoid burning through google api quota
+  var totalQueries = 0;
+
   var type = selectNextLocationType(curHours);
 
   getNextLocation(curLat, curLng, type);
@@ -411,47 +415,56 @@ exports.create_trip_with_time = function(req, res){
                     + "&radius=" + radius
                     + "&key=" + key;
 
-    // send request to Google
-    request.get(googleReq, function(error, response, body){
-      // get body of response from Google
-      var jsonBody = JSON.parse(body);
+    totalQueries += 1;
 
-      // get list of locations from body
-      var results = jsonBody.results;
+    if (totalQueries <= 10){
 
-      if (results.length > 0){
-        // choose a random location from the results
-        var selectedStop = selectStop(results);
+      // send request to Google
+      request.get(googleReq, function(error, response, body){
+        // get body of response from Google
+        var jsonBody = JSON.parse(body);
 
-        // update the trip with new stop
-        updateTrip(selectedStop, type);
-      } else if ( results.length == 0 && nextLocRetries < 3){
-        var type = selectNextLocationType(curHours);
-        getNextLocation(curLat, curLng, type);
-      } else {
-        updateTrip(null, null);
-      }
+        // get list of locations from body
+        var results = jsonBody.results;
 
-      function selectStop(results){
-        // Selects a random stop to visit from list of possible locations.
-        // Makes sure that location hasn't already been visited.
+        if (results.length > 0){
+          // choose a random location from the results
+          var selectedStop = selectStop(results);
 
-        var selectedStop;
-        var count = 0;
-        do {
-          var nextStopIndex = getRandomInt(0, results.length - 1);
-          selectedStop = results[nextStopIndex];
-          count += 1;
-          if (count > 10){
-            // getting hung up, return what results are available
-            selectedStop = null;
-            break;
-          }
-        } while (isInArray(selectedStop.name.trim(), visitedPlaceNames));
+          // update the trip with new stop
+          updateTrip(selectedStop, type);
+        } else if ( results.length == 0 && nextLocRetries < 3){
+          var type = selectNextLocationType(curHours);
+          getNextLocation(curLat, curLng, type);
+        } else {
+          updateTrip(null, null);
+        }
 
-        return selectedStop;
-      }
-    });
+        function selectStop(results){
+          // Selects a random stop to visit from list of possible locations.
+          // Makes sure that location hasn't already been visited.
+
+          var selectedStop;
+          var count = 0;
+          do {
+            var nextStopIndex = getRandomInt(0, results.length - 1);
+            selectedStop = results[nextStopIndex];
+            count += 1;
+            if (count > 10){
+              // getting hung up, return what results are available
+              selectedStop = null;
+              break;
+            }
+          } while (isInArray(selectedStop.name.trim(), visitedPlaceNames));
+
+          return selectedStop;
+        }
+
+
+      });
+    } else {
+      updateTrip(null, null);
+    }
   }
 
   function updateTrip(result, type){
@@ -490,7 +503,7 @@ exports.create_trip_with_time = function(req, res){
       curTripMins += timeForLocation;
     }
 
-    if (curTripMins >= totalTripMins || totalRetries > 3){
+    if (totalQueries >= 10 || curTripMins >= totalTripMins || totalRetries > 3){
       // return results to user
       sendResponse(resultsJSON);
     } else if (result != null){
@@ -519,6 +532,7 @@ exports.create_trip_with_time = function(req, res){
 
   function sendResponse(resultsJSON){
     // return results to user
+    console.log(totalQueries);
     res.send(resultsJSON);
   }
 }
