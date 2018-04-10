@@ -11,93 +11,62 @@ var key = "AIzaSyCBK9DcA1myZY9kLi24J65dvzu2zCFc-Ik";
 // spare key = AIzaSyDOCuie_UYb_wm7jlb1N1hrx4R2-PkYA9A
 // spare spare key = AIzaSyCBK9DcA1myZY9kLi24J65dvzu2zCFc-Ik
 
-exports.list_all_trips = function(req, res) {
-  Trip.find({}, function(err, trip) {
+
+exports.get_trip_data = function(req, res) {
+  var id = req.params.tripId;
+  Trip.findById(id, function(err, trip) {
     if (err)
-      res.send(err);
+      res.send("Can't find trip with ID: " + id);
     res.json(trip);
   });
 };
 
 
-
-exports.create_a_trip = function(req, res) {
-  var new_trip = new Trip(req.body);
-  new_trip.save(function(err, trip) {
-    if (err)
-      res.send(err);
-    res.json(trip);
-  });
-};
-
-
-exports.read_a_trip = function(req, res) {
-  Trip.findById(req.params.taskId, function(err, trip) {
-    if (err)
-      res.send(err);
-    res.json(trip);
-  });
-};
-
-
-exports.update_a_trip = function(req, res) {
-  Trip.findOneAndUpdate({
-    _id: req.params.tripId
-  }, req.body, {
-    new: true
-  }, function(err, trip) {
-    if (err)
-      res.send(err);
-    res.json(trip);
-  });
-};
-
-exports.generate_a_trip = function(req, res) {
-  //Connecting to Google Places API
-  // AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8
-
-  // URL example:
-  // https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=-33.8670522,151.1957362&radius=500&type=restaurant&keyword=cruise&key=YOUR_API_KEY
-  var back = "hello world";
-
-  /*request('https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=-33.8670522,151.1957362&radius=500&type=restaurant&keyword=cruise&key=AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8', {
-    json: true
-  }, (err, res, body) => {
-    if (err) {
-      return console.log(err + " test");
-    }
-    console.log(body.url);
-    console.log(body.explanation);
-    //back = body.url + body.explanation;
-  });*/
-
-  request.get('https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=-33.8670522,151.1957362&radius=500&type=restaurant&keyword=cruise&key=AIzaSyDABoCKKU8ElJYuvKQa_c95pPYKU-RBsj8')
-  .on('response', function(response) {
-    res.json(response);
-    console.log(response.statusCode) // 200
-    console.log(response.headers['content-type']) // 'image/png'
-  });
-
-  //res.json({message: 'test'});
-  //res.send('hello world');
+exports.rate_trip = function(req, res) {
+  var id = req.params.tripId;
+  var rating = req.query.rating;
+  if (rating && rating > 0 && rating <= 5){
+    Trip.findOneAndUpdate({
+      _id: id
+    }, {'rating': rating},
+      function(err, trip) {
+      if (err)
+        res.send("Can't find trip with ID: " + id);
+      res.send("Rating updated");
+    });
+  } else {
+    res.send("Please enter valid rating");
+  }
 
 };
 
 exports.get_nearby_locations = function(req, res) {
-
   if (!req.query.location || !req.query.keyword){
     res.send("Error: please enter location and keyword");
     return;
   }
   var location = req.query.location;
-  var keyword = req.query.keyword;
+  var userLatLng = location.split(",");
+  var userLat = Number(userLatLng[0]);
+  var userLng = Number(userLatLng[1]);
+  var keywordList = req.query.keyword.split(",");
+  var keyword = "";
+  if (keywordList.length != 1){
+    res.send("Error: please enter a single keyword");
+  } else {
+    keyword = keywordList[0];
+  }
+  var rating = 4
+  if (req.query.rating && req.query.rating > 0 && req.query.rating <= 5){
+    rating = req.query.rating;
+  }
   var radius = 500;
   if (req.query.radius){
     radius = req.query.radius;
   }
 
   var googleReq = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
-                  + location
+                  + userLat + "," + userLng
                   + "&radius=" + radius
                   + "&keyword=" + keyword
                   + "&key=" + key;
@@ -107,13 +76,25 @@ exports.get_nearby_locations = function(req, res) {
     var results = jsonBody.results;
     var toReturn = {results: []};
 
-    for (var x in results){
-      if (results[x].rating > 4.0) {
-        toReturn.results.push(results[x]);
-      }
-    }
+    if (results.length > 0){
+      for (var x in results){
+        if (results[x].rating > rating) {
+          var result = results[x];
 
-    toReturn.results = jsonSort(toReturn.results, "rating", "des");
+          var destLat = result.geometry.location.lat;
+          var destLng = result.geometry.location.lng;
+
+          var distanceFromLast = getDistanceSphere(userLat, userLng, destLat, destLng);
+          var walkingTimeFromLast = Math.round(distanceFromLast / 83); // 5km/h walking speed in minutes
+
+          result["distanceFromLast"] = distanceFromLast;
+          result["walkingTimeFromLast"] = walkingTimeFromLast;
+          toReturn.results.push(result);
+        }
+      }
+
+      toReturn.results = jsonSort(toReturn.results, "rating", "des");
+    }
 
     res.send(toReturn);
   });
@@ -121,7 +102,7 @@ exports.get_nearby_locations = function(req, res) {
 
 };
 
-exports.create_a_trip = function(req, res) {
+exports.create_trip_with_stops = function(req, res) {
   // builds an itinerary for the client based on their current location,
   // supplied keywords and number of stops desired.
 
@@ -169,11 +150,17 @@ exports.create_a_trip = function(req, res) {
       // get list of locations from body
       var results = jsonBody.results;
 
+      if (results.length > 0){
+
       // choose a random location from the results
       var selectedStop = selectStop(results);
 
       // update the trip with new stop
       updateTrip(selectedStop);
+      }
+      else {
+        updateTrip(null);
+      }
 
       function selectStop(results){
         // Selects a random stop to visit from list of possible locations.
@@ -194,28 +181,40 @@ exports.create_a_trip = function(req, res) {
     // Adds a stop to trip itinerary, and if trip is fully generated
     // makes a call to send the response to the user
 
-    // add stop to the trip itinerary and
-    resultsJSON.results.push(result);
-    visitedPlaces.push(result.name.trim());
-
     // decrement number of stops left to make
     toVisitListIndex += 1;
+
+    if (result != null){
+      // add stop to the trip itinerary if result found
+      resultsJSON.results.push(result);
+      visitedPlaces.push(result.name.trim());
+    }
 
     if (toVisitListIndex == numStops){
       // return results to user
       sendResponse(resultsJSON);
     } else {
       // get current location in trip
-      var stopLocation = result.geometry.location.lat + "," + result.geometry.location.lng;
-
+      if (result){
+        var stopLocation = result.geometry.location.lat + "," + result.geometry.location.lng;
+      }
       // get new trip location based on current location
       getLocation(stopLocation, toVisitList[toVisitListIndex]);
     }
   }
 
   function sendResponse(resultsJSON){
-    // optimize trip route
-    resultsJSON.results = optimizeRoute(resultsJSON.results);
+    if (resultsJSON.results.length > 0){
+      // optimize trip route
+      resultsJSON.results = optimizeRoute(resultsJSON.results);
+
+      var trip = new Trip(resultsJSON);
+      var id = trip._id;
+      trip.save(function(err, savedTrip){
+      });
+      resultsJSON["tripId"] = id
+
+    }
     // return results to user
     res.send(resultsJSON);
   }
@@ -283,7 +282,7 @@ exports.create_a_trip = function(req, res) {
 
       // add distanceFromLast and walkingTimeFromLast properties to selected location
       toAdd["distanceFromLast"] = minDistance;
-      var walkingTime = minDistance / 83 * 60; // 5km/h walking speed per minute
+      var walkingTime = minDistance / 83; // 5km/h walking speed per minute
       toAdd["walkingTimeFromLast"] = Math.round(walkingTime);
 
       // set new current location to selected location
@@ -532,7 +531,13 @@ exports.create_trip_with_time = function(req, res){
 
   function sendResponse(resultsJSON){
     // return results to user
-    console.log(totalQueries);
+    if (resultsJSON.results.length > 0){
+      var trip = new Trip(resultsJSON);
+      var id = trip._id;
+      trip.save(function(err, savedTrip){
+      });
+      resultsJSON["tripId"] = id
+    }
     res.send(resultsJSON);
   }
 }
@@ -555,72 +560,66 @@ exports.nearby_suggestion = function(req, res){
     radius = req.query.radius;
   }
 
-  var keywordList = keywords.split(",");
-  var keywordIndex = getRandomInt(0, keywordList.length-1);
-  var keyword = keywordList[keywordIndex];
+  // retry limit counter
+  var totalRetries = 0;
 
-  // construct Google query
+  getLocation();
 
-  var googleReq = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
-                  + userLocation
-                  + "&keyword=" + keyword
-                  + "&radius=" + radius
-                  + "&key=" + key;
+  function getLocation(){
+    var keywordList = keywords.split(",");
+    var keywordIndex = getRandomInt(0, keywordList.length-1);
+    var keyword = keywordList[keywordIndex];
 
-  // send request to Google
-  request.get(googleReq, function(error, response, body){
-    // get body of response from Google
-    var jsonBody = JSON.parse(body);
+    // construct Google query
 
-    // get list of locations from body
-    var results = jsonBody.results;
+    var googleReq = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
+                    + userLocation
+                    + "&keyword=" + keyword
+                    + "&radius=" + radius
+                    + "&key=" + key;
 
-    // choose a random location from the results
-    var nextStopIndex = getRandomInt(0, results.length);
-    var selectedStop = results[nextStopIndex];
+    // send request to Google
+    request.get(googleReq, function(error, response, body){
+      // get body of response from Google
+      var jsonBody = JSON.parse(body);
 
-    // calculate distance and walking time
-    var userLatLng = userLocation.split(",");
-    var userLat = userLatLng[0];
-    var userLng = userLatLng[1];
+      // get list of locations from body
+      var results = jsonBody.results;
 
-    // makes sure result exists to stop server crashing
-    if (!selectedStop){
-      resultsJSON["error"] = "No result found";
-      res.send(resultsJSON);
-      return;
-    }
-    var destLat = selectedStop.geometry.location.lat;
-    var destLng = selectedStop.geometry.location.lng;
+      // choose a random location from the results
+      var nextStopIndex = getRandomInt(0, results.length);
+      var selectedStop = results[nextStopIndex];
 
-    var distanceFromLast = getDistanceSphere(userLat, userLng, destLat, destLng);
-    var walkingTimeFromLast = Math.round(distanceFromLast / 83); // 5km/h walking speed in minutes
+      // calculate distance and walking time
+      var userLatLng = userLocation.split(",");
+      var userLat = userLatLng[0];
+      var userLng = userLatLng[1];
 
-    selectedStop["distanceFromLast"] = distanceFromLast;
-    selectedStop["walkingTimeFromLast"] = walkingTimeFromLast;
+      // makes sure result exists to stop server crashing
+      if (selectedStop){
 
-    // add to resultsJSON
-    resultsJSON.results.push(selectedStop);
+        var destLat = selectedStop.geometry.location.lat;
+        var destLng = selectedStop.geometry.location.lng;
 
-    // return result to user
-    res.send(resultsJSON);
-  });
+        var distanceFromLast = getDistanceSphere(userLat, userLng, destLat, destLng);
+        var walkingTimeFromLast = Math.round(distanceFromLast / 83); // 5km/h walking speed in minutes
 
+        selectedStop["distanceFromLast"] = distanceFromLast;
+        selectedStop["walkingTimeFromLast"] = walkingTimeFromLast;
 
-};
+        // add to resultsJSON
+        resultsJSON.results.push(selectedStop);
 
-exports.delete_a_trip = function(req, res) {
-  Trip.remove({
-    _id: req.params.taskId
-  }, function(err, trip) {
-    if (err)
-      res.send(err);
-    res.json({
-      message: 'Trip successfully deleted'
+        // return result to user
+        res.send(resultsJSON);
+      } else {
+        resultsJSON["error"] = "No result found";
+        res.send(resultsJSON);
+      }
     });
-  });
-};
+  }
 
+};
 
 // Utility functions
 function getRandomInt(min, max) {

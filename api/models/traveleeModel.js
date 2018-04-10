@@ -4,20 +4,16 @@ var Schema = mongoose.Schema;
 
 
 var TripSchema = new Schema({
-  name: {
-    type: String,
-    required: 'Kindly enter the name of the trip'
-  },
-  Created_date: {
+  results: [],
+  created_date: {
     type: Date,
     default: Date.now
   },
-  status: {
-    type: [{
-      type: String,
-      enum: ['pending', 'ongoing', 'completed']
-    }],
-    default: ['pending']
+  rating: {
+      type: Number,
+      min: 0,
+      max: 5,
+      default: 0
   }
 });
 

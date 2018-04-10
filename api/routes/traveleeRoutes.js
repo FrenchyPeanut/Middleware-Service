@@ -2,19 +2,10 @@
 module.exports = function(app) {
   var travelee = require('../controllers/traveleeController');
 
-  // todoList Routes
-  app.route('/trips')
-    .get(travelee.list_all_trips)
-    .post(travelee.create_a_trip);
-
-
+  // Travelee routes
   app.route('/trips/:tripId')
-    .get(travelee.read_a_trip)
-    .put(travelee.update_a_trip)
-    .delete(travelee.delete_a_trip);
-
-  app.route('/find')
-    .get(travelee.generate_a_trip);
+    .get(travelee.get_trip_data)
+    .put(travelee.rate_trip)
 
   app.route('/nearby')
     .get(travelee.get_nearby_locations);
@@ -22,8 +13,8 @@ module.exports = function(app) {
   app.route('/suggestion')
     .get(travelee.nearby_suggestion);
 
-  app.route('/create_trip')
-    .get(travelee.create_a_trip);
+  app.route('/create_trip_with_stops')
+    .get(travelee.create_trip_with_stops);
 
   app.route('/create_trip_with_time')
     .get(travelee.create_trip_with_time);

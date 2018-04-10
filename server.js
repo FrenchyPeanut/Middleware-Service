@@ -9,6 +9,7 @@ var express = require('express'),
   //Mongoose connection
   mongoose.Promise = global.Promise;
   mongoose.connect('mongodb://root:travelee@ds115579.mlab.com:15579/travelee');
+  //mongoose.connect('mongodb://localhost/db')
 
   app.use(bodyParser.urlencoded({extended: true}));
   app.use(bodyParser.json());
